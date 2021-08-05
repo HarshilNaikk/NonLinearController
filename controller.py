@@ -28,6 +28,8 @@ class controller:
         self.t = 0.0
 
         self.v1,self.v2,self.v3,self.v4,self.v5,self.v6,self.u = 0.0,0.0,0.0,0.0,0.0,0.0,0.0
+        self.fx, self.fy, self.fz = 0.0, 0.0, -self.g
+        self.fphi,self.ftheta,self.fpsi = 0.0, 0.0, 0.0
 
     def update(self):
         self.eta = np.array([[self.phi],[self.theta],[self.psi]])
@@ -44,20 +46,17 @@ class controller:
         self.Rt = np.array([[C(self.phi)*C(self.psi), (S(self.phi)*S(self.theta)*C(self.psi) - C(self.phi)*S(self.psi)), (C(self.phi)*S(self.theta)*C(self.psi) + S(self.phi)*S(self.psi))], [C(self.theta)*S(self.psi), (S(self.phi)*S(self.theta)*S(self.psi) + C(self.phi)*C(self.psi)), (C(self.phi)*S(self.theta)*S(self.psi) - S(self.phi)*C(self.psi))], [-S(self.phi), S(self.phi)*C(self.theta), C(self.phi)*C(self.theta)]])
         self.Rr = np.array([[1,0,-S(self.theta)], [0,C(self.phi),C(self.theta)*S(self.phi)], [0,-S(self.phi),C(self.phi)*C(self.theta)]])
         self.dRrbydphi = np.array([[0,0,0], [0,-S(self.phi),C(self.theta)*C(self.phi)], [0,-C(self.phi),-S(self.phi)*C(self.theta)]])
-        self.dRrbydphibydtheta = np.array([[0,0,-C(self.theta)], [0,0,-S(self.theta)*S(self.phi)], [0,0,-C(self.phi)*S(self.theta)]])
+        self.dRrbydtheta = np.array([[0,0,-C(self.theta)], [0,0,-S(self.theta)*S(self.phi)], [0,0,-C(self.phi)*S(self.theta)]])
 
         # print(np.shape(self.etadot), "etadot")
         # print(np.shape(self.Rr), "Rr")
         # print(np.shape(self.It), "It")
         # print(np.shape(self.Rr.dot(self.etadot)))
         # print(np.shape(self.It.dot(self.Rr).dot(self.etadot)))
-
-        self.fx, self.fy, self.fz = 0.0, 0.0, -self.g
-        self.fphi,self.ftheta,self.fpsi = 0.0, 0.0, 0.0
         self.farr1 = np.array([[self.fx],[self.fy],[self.fz]])
-        self.farr2 = -np.linalg.inv(np.dot(self.It,self.Rr)).dot((self.It.dot(self.phidot*self.dRrbydphi+self.thetadot*self.dRrbydphibydtheta).dot(self.etadot) - np.cross(self.Rr.dot(self.etadot), self.It.dot(self.Rr).dot(self.etadot),axis=0))) + np.array([[(self.c/self.Iz)*C(self.phi)*T(self.theta)*(self.F1-self.F2+self.F3-self.F4)],[(-self.c/self.Iz)*S(self.phi)*(self.F1-self.F2+self.F3-self.F4)],[(self.d/self.Iy)*(S(self.phi)/C(self.theta))*(self.F3-self.F1)]])
+        self.farr2 = -np.linalg.inv(np.dot(self.It,self.Rr)).dot((self.It.dot(self.phidot*self.dRrbydphi+self.thetadot*self.dRrbydtheta).dot(self.etadot) - np.cross(self.Rr.dot(self.etadot), self.It.dot(self.Rr).dot(self.etadot),axis=0))) + np.array([[(self.c/self.Iz)*C(self.phi)*T(self.theta)*(self.F1-self.F2+self.F3-self.F4)],[(-self.c/self.Iz)*S(self.phi)*(self.F1-self.F2+self.F3-self.F4)],[(self.d/self.Iy)*(S(self.phi)/C(self.theta))*(self.F3-self.F1)]])
         # print(self.farr2)
-        # print((self.It.dot(self.phidot*self.dRrbydphi+self.thetadot*self.dRrbydphibydtheta).dot(self.etadot)))# - 
+        # print((self.It.dot(self.phidot*self.dRrbydphi+self.thetadot*self.dRrbydtheta).dot(self.etadot)))# - 
         # print(np.cross(self.Rr.dot(self.etadot), self.It.dot(self.Rr).dot(self.etadot)))
         # print(np.array([[(self.c/self.Iz)*C(self.phi)*T(self.theta)*(self.F1-self.F2+self.F3-self.F4)],[(-self.c/self.Iz)*S(self.phi)*(self.F1-self.F2+self.F3-self.F4)],[(self.d/self.Iy)*(S(self.phi)/C(self.theta))*(self.F3-self.F1)]]))
         # self.farr2 = np.array([[self.fphi],[self.ftheta],[self.fpsi]])
@@ -68,10 +67,19 @@ class controller:
         # print(self.fphi)
         # print(self.farr2)
 
-        self.f0 = np.vstack((self.fx,self.fy))####CHECK THE vstackYYYYY NAIKK CHOMUUU
+        self.f0 = np.vstack((self.fx,self.fy))
         self.f1 = np.vstack((self.fphi,self.ftheta))
         self.f2 = np.vstack((self.fpsi,self.fz))
         # print(self.f1)
+        self.J0 = np.array([[C(self.phi),0],[-S(self.phi)*S(self.theta), C(self.phi)*C(self.theta)]])
+        self.J1 = np.array([[0,self.d,0,-self.d],[-self.d,0,self.d,0]])
+        self.J2 = np.array([[self.c,-self.c,self.c,-self.c],[1,1,1,1]])
+
+        self.jvec = np.vstack((self.J1,self.J2))
+        # print(np.shape(self.jvec))
+        # print(np.shape(self.J1), np.shape(self.J2))
+
+        self.gblock = block_diag(self.g1,self.g2)
 
         self.u = np.array([[self.F1dot], [self.F2dot], [self.F3dot], [self.F4dot]])
         # print(self.u)
@@ -87,39 +95,22 @@ class controller:
         self.x7 = np.array([[self.F1], [self.F2], [self.F3], [self.F4]])
         # print(np.shape(self.x7))
 
-
-        
-
         self.x1dot = self.x2
-        self.x2dot = self.f0 + self.g0*self.phivec0
+        self.x2dot = self.f0 + self.g0.dot(self.phivec0)
         self.x3dot = self.x4
-        self.x4dot = self.f1 + self.g1*self.phivec1
+        self.x4dot = self.f1 + self.g1.dot(self.phivec1)
         self.x5dot = self.x6
-        self.x6dot = self.f2 + self.g2*self.phivec2
+        self.x6dot = self.f2 + self.g2.dot(self.phivec2)
         self.x7dot = self.u
-        # print((self.x7*self.dt + self.x7dot))
+        # print((self.x7*self.dt + self.x7dot)
 
-
-        self.J0 = np.array([[C(self.phi),0],[-S(self.phi)*S(self.theta), C(self.phi)*C(self.theta)]])
-        self.J1 = np.array([[0,self.d,0,-self.d],[-self.d,0,self.d,0]])
-        self.J2 = np.array([[self.c,-self.c,self.c,-self.c],[1,1,1,1]])
-
-        self.jvec = np.vstack((self.J1,self.J2))
-        # print(np.shape(self.jvec))
-        # print(np.shape(self.J1), np.shape(self.J2))
-
-        self.gblock = block_diag(self.g1,self.g2)
-        
-        
-        #define Js, gblock,varrs, make sure about A* is dot product or not, define dot products in calc_input
-
-    # def desiredVals(self,t):
-    #    return np.array([1, np.cos(t)]), np.array([t, np.sin(t)])
 
     def calc_input(self):
+        # print(self.x1)
         self.v1 = self.A1.dot((self.x1d-self.x1)) + self.x1ddot
+        # print(self.v1)
         v1dot = self.derivative(self.v1,self.v1o)
-        print(v1dot)
+        # print(v1dot)
         self.v2 = np.linalg.inv(self.g0).dot(((self.x1d - self.x1)) + self.A2.dot((self.v1 - self.x2)) + v1dot - self.f0 )
         v2dot = self.derivative(self.v2,self.v2o)
         self.v3 = np.linalg.inv(self.J0).dot(np.transpose(self.g0).dot((self.v1 - self.x2)) + self.A3.dot(self.v2 - self.phivec0) + v2dot )
@@ -130,18 +121,18 @@ class controller:
         v5dot = self.derivative(self.v5,self.v5o)
         self.varr1 = np.vstack((self.v3 - self.x4, self.v5 - self.x6))
         self.v6 = np.linalg.inv(self.g2).dot( (self.x5d - self.x5) + self.A6.dot(self.v5 - self.x6) + v5dot - self.f2 )
+        # print(self.v6)
         v6dot = self.derivative(self.v6,self.v6o)
         self.varr2 = np.vstack((self.v4 - self.phivec1,self.v6 - self.phivec2))
         self.u = np.linalg.inv(self.jvec).dot(np.dot(np.transpose(self.gblock),self.varr1) + np.vstack((v4dot,v6dot)) + self.A7.dot(self.varr2 ))
+        # print(self.u)
+        # self.u = np.array([[0.0],[0.0],[0.0],[0.0]])
         self.x7dot = self.u
 
     def integrate(self,q1,q2):
-
-        # print(q1, q2)
         return q2*self.dt + q1
 
     def derivative(self,q1,q2):
-        # print((q1-q2)/self.dt)
         return (q1-q2)/self.dt
 
     
@@ -162,19 +153,22 @@ class controller:
             self.calc_input()
 
             self.F1, self.F2, self.F3, self.F4 = self.integrate(self.x7,self.x7dot)[:,0]
+            # print(self.x7dot,"x7dot")
             # print(self.F1, self.F2, self.F3, self.F4)
-            self.update()
+            # self.update()
             self.psidot, self.zdot = self.integrate(self.x6,self.x6dot)[:,0]
-            self.update()
+            print(self.x6dot,"x6dot")
+            # self.update()
             self.psi, self.z = self.integrate(self.x5,self.x5dot)[:,0]
-            self.update()
+            # print(self.z, "z")
+            # self.update()
             self.phidot, self.thetadot = self.integrate(self.x4,self.x4dot)[:,0]
             # print(self.x4, self.x4dot)
-            self.update()
+            # self.update()
             self.phi, self.theta = self.integrate(self.x3,self.x3dot)[:,0]
-            self.update()
+            # self.update()
             self.xdot, self.ydot = self.integrate(self.x2,self.x2dot)[:,0]
-            self.update()
+            # self.update()
             self.x,self.y = self.integrate(self.x1,self.x1dot)[:,0]
             self.update()
 
