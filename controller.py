@@ -2,8 +2,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 from numpy import sin as S 
 from numpy import cos as C 
-from numpy import tan as T 
+from numpy import tan as T
+from numpy.core.shape_base import block 
 from scipy.linalg import block_diag
+import time
+
 
 class controller:
     def __init__(self):
@@ -27,9 +30,9 @@ class controller:
         self.dt = 0.1
         self.t = 0.0
 
-        self.v1,self.v2,self.v3,self.v4,self.v5,self.v6,self.u = 0.0,0.0,0.0,0.0,0.0,0.0,0.0
+        self.v1,self.v2,self.v3,self.v4,self.v5,self.v6,self.u = np.array([[0.0],[0.0]]),np.array([[0.0],[0.0]]),np.array([[0.0],[0.0]]),np.array([[0.0],[0.0]]),np.array([[0.0],[0.0]]),np.array([[0.0],[0.0]]),np.array([[0.0],[0.0],[0.0],[0.0]])
         self.fx, self.fy, self.fz = 0.0, 0.0, -self.g
-        self.fphi,self.ftheta,self.fpsi = 0.0, 0.0, 0.0
+        # self.fphi,self.ftheta,self.fpsi = 0.0, 0.0, 0.0
 
     def update(self):
         self.eta = np.array([[self.phi],[self.theta],[self.psi]])
@@ -80,6 +83,7 @@ class controller:
         # print(np.shape(self.J1), np.shape(self.J2))
 
         self.gblock = block_diag(self.g1,self.g2)
+        # print(self.gblock)
 
         self.u = np.array([[self.F1dot], [self.F2dot], [self.F3dot], [self.F4dot]])
         # print(self.u)
@@ -107,24 +111,24 @@ class controller:
 
     def calc_input(self):
         # print(self.x1)
-        self.v1 = self.A1.dot((self.x1d-self.x1)) + self.x1ddot
+        self.v1 = self.A1@((self.x1d-self.x1)) + self.x1ddot
         # print(self.v1)
         v1dot = self.derivative(self.v1,self.v1o)
         # print(v1dot)
-        self.v2 = np.linalg.inv(self.g0).dot(((self.x1d - self.x1)) + self.A2.dot((self.v1 - self.x2)) + v1dot - self.f0 )
+        self.v2 = np.linalg.inv(self.g0)@(((self.x1d - self.x1)) + self.A2@((self.v1 - self.x2)) + v1dot - self.f0 )
         v2dot = self.derivative(self.v2,self.v2o)
-        self.v3 = np.linalg.inv(self.J0).dot(np.transpose(self.g0).dot((self.v1 - self.x2)) + self.A3.dot(self.v2 - self.phivec0) + v2dot )
+        self.v3 = np.linalg.inv(self.J0)@(np.transpose(self.g0)@((self.v1 - self.x2)) + self.A3@(self.v2 - self.phivec0) + v2dot )
         v3dot = self.derivative(self.v3,self.v3o)
-        self.v4 = np.linalg.inv(self.g1).dot( np.transpose(self.J0).dot(self.v2 - self.phivec0) + self.A4.dot(self.v3 - self.x4) + v3dot - self.f1 )
+        self.v4 = np.linalg.inv(self.g1)@( np.transpose(self.J0)@(self.v2 - self.phivec0) + self.A4@(self.v3 - self.x4) + v3dot - self.f1 )
         v4dot = self.derivative(self.v4,self.v4o)
-        self.v5 = self.A5.dot(self.x5d - self.x5) + self.x5ddot
+        self.v5 = self.A5@(self.x5d - self.x5) + self.x5ddot
         v5dot = self.derivative(self.v5,self.v5o)
         self.varr1 = np.vstack((self.v3 - self.x4, self.v5 - self.x6))
-        self.v6 = np.linalg.inv(self.g2).dot( (self.x5d - self.x5) + self.A6.dot(self.v5 - self.x6) + v5dot - self.f2 )
+        self.v6 = np.linalg.inv(self.g2)@( (self.x5d - self.x5) + self.A6@(self.v5 - self.x6) + v5dot - self.f2 )
         # print(self.v6)
         v6dot = self.derivative(self.v6,self.v6o)
         self.varr2 = np.vstack((self.v4 - self.phivec1,self.v6 - self.phivec2))
-        self.u = np.linalg.inv(self.jvec).dot(np.dot(np.transpose(self.gblock),self.varr1) + np.vstack((v4dot,v6dot)) + self.A7.dot(self.varr2 ))
+        self.u = np.linalg.inv(self.jvec).dot(((self.varr1.dot(np.transpose(self.gblock))) + np.vstack((v4dot,v6dot)) + self.A7.dot(self.varr2)))
         # print(self.u)
         # self.u = np.array([[0.0],[0.0],[0.0],[0.0]])
         self.x7dot = self.u
@@ -133,6 +137,7 @@ class controller:
         return q2*self.dt + q1
 
     def derivative(self,q1,q2):
+        print((q1-q2)/self.dt)
         return (q1-q2)/self.dt
 
     
@@ -143,13 +148,14 @@ class controller:
         plt.figure(figsize=(10,5))
         ax = plt.axes(projection ='3d')
 
-        for i in range(1,20):
+        for i in range(1,200):
             self.t = T[i]
             self.v1o,self.v2o,self.v3o,self.v4o,self.v5o,self.v6o,self.uo = self.v1,self.v2,self.v3,self.v4,self.v5,self.v6,self.u
             #self.update()
-            self.x5d = np.array([[0], [0]])
-            self.x5ddot = np.array([[0], [0]])
-            self.x1ddot, self.x1d = np.array([[1/10], [1*C(self.t/10)]]), np.array([[self.t/10], [10*S(self.t/10)]])
+            self.x5d = np.array([[0], [10*S(self.t)]])
+            self.x5ddot = np.array([[0], [10*C(self.t)]])
+            # self.x1ddot, self.x1d = np.array([[1/10], [1*C(self.t/10)]]), np.array([[self.t/10], [10*S(self.t/10)]])
+            self.x1ddot, self.x1d = np.array([[0], [0]]), np.array([[0], [0]])
             self.calc_input()
 
             self.F1, self.F2, self.F3, self.F4 = self.integrate(self.x7,self.x7dot)[:,0]
@@ -157,7 +163,7 @@ class controller:
             # print(self.F1, self.F2, self.F3, self.F4)
             # self.update()
             self.psidot, self.zdot = self.integrate(self.x6,self.x6dot)[:,0]
-            print(self.x6dot,"x6dot")
+            # print(self.x6dot,"x6dot")
             # self.update()
             self.psi, self.z = self.integrate(self.x5,self.x5dot)[:,0]
             # print(self.z, "z")
@@ -173,9 +179,11 @@ class controller:
             self.update()
 
 
-            ax.scatter(self.x, self.y, self.z, c='lightblue',marker='o')
-            ax.scatter(self.t/10, 10*S(self.t/10), 0, c='coral',marker='o')
-
+            ax.plot(self.x, self.y, self.z, c='lightblue',marker='o')
+            ax.plot(0, 0, 10*S(self.t), c='red',marker='o')
+            plt.show(block=False)
+            plt.pause(0.01)
+            # time.sleep(0.1)
         plt.show()
 
 if __name__ == '__main__':
