@@ -25,8 +25,8 @@ class controller:
         
         self.kt = np.diag([0.01, 0.01, 0.01])
         self.kr = np.diag([0.001, 0.001, 0.001])
-        self.A1,self.A2,self.A3,self.A4,self.A5,self.A6 = np.diag([3,3]),np.diag([3,3]),np.diag([3,3]),np.diag([3,3]),np.diag([3,3]),np.diag([3,3]),
-        self.A7 = np.diag([3,3,3,3])
+        self.A1,self.A2,self.A3,self.A4,self.A5,self.A6 = np.diag([10,10]),np.diag([10,10]),np.diag([10,10]),np.diag([10,10]),np.diag([1,1]),np.diag([1,1]),
+        self.A7 = np.diag([5,5,5,5])
         self.dt = 0.1
         self.t = 0.0
 
@@ -37,7 +37,7 @@ class controller:
     def update(self):
         self.eta = np.array([[self.phi],[self.theta],[self.psi]])
         self.etadot = np.array([[self.phidot],[self.thetadot],[self.psidot]])
-        self.g0 = ((self.F1+self.F2+self.F3+self.F4)/self.m)*np.array([[S(self.psi), C(self.psi)],[-C(self.psi), S(self.psi)]])
+        self.g0 = ((self.F1+self.F2+self.F3+self.F4+10e-6)/self.m)*np.array([[S(self.psi), C(self.psi)],[-C(self.psi), S(self.psi)]])
         # print(self.g0)
         self.g1 = np.array([[1/self.Ix , S(self.phi)*T(self.theta)/self.Iy],[0, C(self.phi)/self.Iy]])
         self.g2 = np.array([[C(self.phi)/(self.Iz*C(self.theta)) , 0],[0, C(self.phi)*C(self.theta)/self.m]])
@@ -128,7 +128,7 @@ class controller:
         # print(self.v6)
         v6dot = self.derivative(self.v6,self.v6o)
         self.varr2 = np.vstack((self.v4 - self.phivec1,self.v6 - self.phivec2))
-        self.u = np.linalg.inv(self.jvec).dot(((self.varr1.dot(np.transpose(self.gblock))) + np.vstack((v4dot,v6dot)) + self.A7.dot(self.varr2)))
+        self.u = np.linalg.inv(self.jvec).dot(((np.transpose(self.gblock).dot(self.varr1)) + np.vstack((v4dot,v6dot)) + self.A7.dot(self.varr2)))
         # print(self.u)
         # self.u = np.array([[0.0],[0.0],[0.0],[0.0]])
         self.x7dot = self.u
@@ -137,7 +137,7 @@ class controller:
         return q2*self.dt + q1
 
     def derivative(self,q1,q2):
-        print((q1-q2)/self.dt)
+        print("derivaive ", (q1-q2)/self.dt)
         return (q1-q2)/self.dt
 
     
@@ -148,14 +148,14 @@ class controller:
         plt.figure(figsize=(10,5))
         ax = plt.axes(projection ='3d')
 
-        for i in range(1,200):
+        for i in range(1,20):
             self.t = T[i]
             self.v1o,self.v2o,self.v3o,self.v4o,self.v5o,self.v6o,self.uo = self.v1,self.v2,self.v3,self.v4,self.v5,self.v6,self.u
             #self.update()
-            self.x5d = np.array([[0], [10*S(self.t)]])
-            self.x5ddot = np.array([[0], [10*C(self.t)]])
-            # self.x1ddot, self.x1d = np.array([[1/10], [1*C(self.t/10)]]), np.array([[self.t/10], [10*S(self.t/10)]])
-            self.x1ddot, self.x1d = np.array([[0], [0]]), np.array([[0], [0]])
+            self.x5d = np.array([[0], [0]])
+            self.x5ddot = np.array([[0], [0]])
+            self.x1ddot, self.x1d = np.array([[0], [0]]), np.array([[10], [10]])
+            # self.x1ddot, self.x1d = np.array([[0], [0]]), np.array([[0], [0]])
             self.calc_input()
 
             self.F1, self.F2, self.F3, self.F4 = self.integrate(self.x7,self.x7dot)[:,0]
