@@ -148,13 +148,13 @@ class controller:
         plt.figure(figsize=(10,5))
         ax = plt.axes(projection ='3d')
 
-        for i in range(1,20):
+        for i in range(1,200):
             self.t = T[i]
             self.v1o,self.v2o,self.v3o,self.v4o,self.v5o,self.v6o,self.uo = self.v1,self.v2,self.v3,self.v4,self.v5,self.v6,self.u
             #self.update()
-            self.x5d = np.array([[0], [0]])
-            self.x5ddot = np.array([[0], [0]])
-            self.x1ddot, self.x1d = np.array([[0], [0]]), np.array([[10], [10]])
+            self.x5d = np.array([[0], [5*S(self.t)]])
+            self.x5ddot = np.array([[0], [5*C(self.t)]])
+            self.x1ddot, self.x1d = np.array([[0], [0]]), np.array([[0], [0]])
             # self.x1ddot, self.x1d = np.array([[0], [0]]), np.array([[0], [0]])
             self.calc_input()
 
@@ -180,7 +180,7 @@ class controller:
 
 
             ax.plot(self.x, self.y, self.z, c='lightblue',marker='o')
-            ax.plot(0, 0, 10*S(self.t), c='red',marker='o')
+            ax.plot(0, 0, 5*S(self.t), c='red',marker='o')
             plt.show(block=False)
             plt.pause(0.01)
             # time.sleep(0.1)
